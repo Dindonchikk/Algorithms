@@ -7,4 +7,14 @@ add_library(LibraryCPP array.cpp list.cpp queue.cpp stack.cpp vector.cpp)
 
 target_include_directories(LibraryCPP PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
+#
+if(MSVC)
+    set_source_files_properties(
+        queue.cpp
+        vector.cpp
+        PROPERTIES COMPILE_OPTIONS "/wd4100"
+    )
+endif()
+#
+
 add_subdirectory(Tests)
