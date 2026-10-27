@@ -6,163 +6,159 @@
 
 #include "stack.h"
 
-namespace
+Data popValue(Stack* stack)
 {
-    // Если стек пуст, считаем, что извлекли 0.
-    Data popValue(Stack* stack)
-    {
-        if (stack_empty(stack))
-            return 0;
+    if (stack_empty(stack))
+        return 0;
 
-        Data value = stack_get(stack);
-        stack_pop(stack);
-        return value;
+    Data value = stack_get(stack);
+    stack_pop(stack);
+    return value;
+}
+
+bool pushResult(Stack* stack, long long result)
+{
+    if (result < std::numeric_limits<Data>::min() ||
+        result > std::numeric_limits<Data>::max())
+    {
+        std::cerr << "Error: arithmetic overflow\n";
+        return false;
     }
 
-    bool pushResult(Stack* stack, long long result)
+    stack_push(stack, static_cast<Data>(result));
+    return true;
+}
+
+bool interpret(const std::string& program, Stack* stack,
+    std::ostream& output)
+{
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<Data> distribution(0, 99);
+
+    for (char command : program)
     {
-        if (result < std::numeric_limits<Data>::min() ||
-            result > std::numeric_limits<Data>::max())
+        if (command >= '0' && command <= '9')
         {
-            std::cerr << "Error: arithmetic overflow\n";
-            return false;
+            stack_push(stack, command - '0');
         }
-
-        stack_push(stack, static_cast<Data>(result));
-        return true;
-    }
-
-    bool interpret(const std::string& program, Stack* stack,
-        std::ostream& output)
-    {
-        std::random_device rd;
-        std::mt19937 generator(rd());
-        std::uniform_int_distribution<Data> distribution(0, 99);
-
-        for (char command : program)
+        else
         {
-            if (command >= '0' && command <= '9')
+            switch (command)
             {
-                stack_push(stack, command - '0');
+            case '+':
+            {
+                Data right = popValue(stack);
+                Data left = popValue(stack);
+
+                if (!pushResult(stack,
+                    static_cast<long long>(left) + right))
+                    return false;
+                break;
             }
-            else
+
+            case '-':
             {
-                switch (command)
-                {
-                case '+':
-                {
-                    Data right = popValue(stack);
-                    Data left = popValue(stack);
+                Data right = popValue(stack);
+                Data left = popValue(stack);
 
-                    if (!pushResult(stack,
-                        static_cast<long long>(left) + right))
-                        return false;
-                    break;
+                if (!pushResult(stack,
+                    static_cast<long long>(left) - right))
+                    return false;
+                break;
+            }
+
+            case '*':
+            {
+                Data right = popValue(stack);
+                Data left = popValue(stack);
+
+                if (!pushResult(stack,
+                    static_cast<long long>(left) * right))
+                    return false;
+                break;
+            }
+
+            case '/':
+            {
+                Data right = popValue(stack);
+                Data left = popValue(stack);
+
+                if (right == 0)
+                {
+                    std::cerr << "Error: division by zero\n";
+                    return false;
                 }
 
-                case '-':
+                long long result =
+                    static_cast<long long>(left) / right;
+
+                if (!pushResult(stack, result))
+                    return false;
+                break;
+            }
+
+            case '%':
+            {
+                Data right = popValue(stack);
+                Data left = popValue(stack);
+
+                if (right == 0)
                 {
-                    Data right = popValue(stack);
-                    Data left = popValue(stack);
-
-                    if (!pushResult(stack,
-                        static_cast<long long>(left) - right))
-                        return false;
-                    break;
+                    std::cerr << "Error: modulo by zero\n";
+                    return false;
                 }
 
-                case '*':
-                {
-                    Data right = popValue(stack);
-                    Data left = popValue(stack);
+                long long result =
+                    static_cast<long long>(left) % right;
 
-                    if (!pushResult(stack,
-                        static_cast<long long>(left) * right))
-                        return false;
-                    break;
-                }
+                if (!pushResult(stack, result))
+                    return false;
+                break;
+            }
 
-                case '/':
-                {
-                    Data right = popValue(stack);
-                    Data left = popValue(stack);
+            case '!':
+            {
+                Data value = popValue(stack);
+                stack_push(stack, value == 0 ? 1 : 0);
+                break;
+            }
 
-                    if (right == 0)
-                    {
-                        std::cerr << "Error: division by zero\n";
-                        return false;
-                    }
+            case '`':
+            {
+                Data right = popValue(stack);
+                Data left = popValue(stack);
+                stack_push(stack, left > right ? 1 : 0);
+                break;
+            }
 
-                    long long result =
-                        static_cast<long long>(left) / right;
+            case ':':
+            {
+                Data value = popValue(stack);
+                stack_push(stack, value);
+                stack_push(stack, value);
+                break;
+            }
 
-                    if (!pushResult(stack, result))
-                        return false;
-                    break;
-                }
+            case '.':
+            {
+                output << popValue(stack) << '\n';
+                break;
+            }
 
-                case '%':
-                {
-                    Data right = popValue(stack);
-                    Data left = popValue(stack);
+            case '&':
+            {
+                stack_push(stack, distribution(generator));
+                break;
+            }
 
-                    if (right == 0)
-                    {
-                        std::cerr << "Error: modulo by zero\n";
-                        return false;
-                    }
-
-                    long long result =
-                        static_cast<long long>(left) % right;
-
-                    if (!pushResult(stack, result))
-                        return false;
-                    break;
-                }
-
-                case '!':
-                {
-                    Data value = popValue(stack);
-                    stack_push(stack, value == 0 ? 1 : 0);
-                    break;
-                }
-
-                case '`':
-                {
-                    Data right = popValue(stack);
-                    Data left = popValue(stack);
-                    stack_push(stack, left > right ? 1 : 0);
-                    break;
-                }
-
-                case ':':
-                {
-                    Data value = popValue(stack);
-                    stack_push(stack, value);
-                    stack_push(stack, value);
-                    break;
-                }
-
-                case '.':
-                {
-                    output << popValue(stack) << '\n';
-                    break;
-                }
-
-                case '&':
-                {
-                    stack_push(stack, distribution(generator));
-                    break;
-                }
-
-                default:
-                    break;
-                }
+            default:
+                break;
             }
         }
-
-        return true;
     }
+
+    return true;
 }
 
 int main(int argc, char* argv[])
